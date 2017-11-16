@@ -1,0 +1,790 @@
+.ORIG X3000
+  LEA R0, WELCOME_MSG
+  LEA R6, BOARD
+  PUTS
+  JSR FILL_BOARD
+  JSR DRAW_BOARD
+ 
+  OFFSETXD .FILL #48
+  CHAR_SAVE .BLKW 1
+
+  GAME_LOOP
+    LEA R0, PLAYER1_MSG
+    PUTS
+    TRAP X23
+    ST R0, CHAR_SAVE
+    LD R1, OFFSETXD
+    NOT R1, R1
+    ADD R1, R1, #1
+    ADD R0, R0, R1
+    BRn GAME_LOOP
+    ADD R0, R0, #-10
+    BRp GAME_LOOP
+    LD R0, CHAR_SAVE
+    JSR PLACE_TAKEN
+    AND R5, R5, #1
+    BRp GAME_LOOP
+    AND R5, R5, #0
+    JSR PLACE_CHAR_PLAYER1
+    JSR DRAW_BOARD
+    JSR CHECK_IF_FINISHED ; 0 - NOT FINISHED , 1 - PLAYER 1 WON, 2 - PLAYER 2 WON, 3 - DRAW
+    ADD R5, R5, #0
+    BRz PLAYER2_TURN
+    ST R5, STATUS_SAVE
+    ADD R5, R5, #-1
+    BRz PLAYER1_WINS
+    LD R5, STATUS_SAVE
+    ADD R5, R5, #-3    
+    BRz DRAW
+    PLAYER2_TURN
+    LEA R0, PLAYER2_MSG
+    PUTS
+    TRAP X23
+    ST R0, CHAR_SAVE
+    LD R1, OFFSETXD
+    NOT R1, R1
+    ADD R1, R1, #1
+    ADD R0, R0, R1
+    BRn PLAYER2_TURN
+    ADD R0, R0, #-10
+    BRp PLAYER2_TURN
+    LD R0, CHAR_SAVE
+    JSR PLACE_TAKEN
+    AND R5, R5, #1
+    BRp PLAYER2_TURN
+    AND R5, R5, #0
+    JSR PLACE_CHAR_PLAYER2
+    JSR DRAW_BOARD
+    JSR CHECK_IF_FINISHED
+    ST R5, STATUS_SAVE
+    ADD R5, R5, #0
+    BRz GAME_LOOP
+    ADD R5, R5, #-2
+    BRz PLAYER2_WINS
+    LD R5, STATUS_SAVE
+    ADD R5, R5, #-3
+    BRz DRAW
+  BRnzp GAME_LOOP
+    
+  PLAYER1_WINS
+  LEA R0, PLAYER1_WON_MSG
+  PUTS
+  HALT
+  PLAYER2_WINS
+  LEA R0, PLAYER2_WON_MSG
+  PUTS
+  HALT
+  DRAW 
+  LEA R0, DRAW_MSG
+  PUTS
+
+  HALT
+  
+  
+  STATUS_SAVE .BLKW 1 
+  
+  WELCOME_MSG .STRINGZ "WELCOME TO LC-3 X-0X - by Mehmed Bazdar\n\n"  
+  PLAYER1_MSG .STRINGZ "Player 1 (1-9): "
+  PLAYER2_MSG .STRINGZ "Player 2 (1-9): "
+  PLAYER1_WON_MSG .STRINGZ "----------------PLAYER 1 WON :D !!!----------------\n"
+  
+  BOARD .BLKW 9 ; THE BOARD THAT STORES INFORMATION ABOUT THE GAME STATE
+  PLAYER2_WON_MSG .STRINGZ "----------------PLAYER 2 WON :D !!!----------------\n"
+  DRAW_MSG .STRINGZ "----------------IT'S A DRAW----------------\n"
+  PLAYER2 .FILL #79 ; SYMBOL FOR O
+  FILL_BOARD ; SUBROUTINE FOR FILLING THE MEMORY LOCATIONS WITH NUMBERS 1-9 FOR THE BOARD
+    AND R2, R2, #0
+    ADD R2, R2, #1 ; INITIALIZE THE COUNTER WITH 1
+    LEA R3, BOARD ; POINTER TO FIRST ELEMENT OF THE ARRAY BOARD
+    LD R1, OFFSET ; LOAD THE OFFSET FOR THE ASCII CODE FOR DIGITS
+    LOOP
+      AND R0, R0, #0
+      ADD R0, R0, R2
+      ADD R0, R0, R1 ; ADD THE OFFSET TO GET THE ASCII CODE FOR THE NUMBER
+      STR R0, R3, #0 ; STORE THE NUMBER IN THE APPROPRIATE MEMORY LOCATION
+      ADD R3, R3, #1
+      ADD R2, R2, #1
+      ADD R4, R2, #-10
+    BRn LOOP
+    AND R1, R1, #0 ; RESET ALL USED REGISTERS TO ZERO
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+  RET  
+  PLACE_TAKEN
+    AND R5, R5, #0
+    LD R2, OFFSET
+    NOT R2, R2
+    ADD R2, R2, #1
+    ADD R2, R2, R0
+    ADD R2, R2, #-1
+    LEA R4, BOARD
+    ADD R4, R4, R2
+    LDR R2, R4, #0
+    LD R4, PLAYER1
+    NOT R4, R4
+    ADD R4, R4, #1
+    ADD R4, R2, R4
+    BRz YES_TAKEN
+    LD R4, PLAYER2
+    NOT R4, R4
+    ADD R4, R4, #1
+    ADD R4, R2, R4
+    BRz YES_TAKEN
+    RET  
+    YES_TAKEN
+    ADD R5, R5, #1
+    RET
+
+  
+  
+  OFFSET .FILL #48 ; ASCII OFFSET FOR DIGITS 
+  SPACE .FILL #32 ; ASCII CODE FOR SPACE
+  NEW_LINE .FILL #10 ; ASCII CODE FOR NEW_LINE
+  PLAYER1 .FILL #88 ; SYMBOL FOR X
+  
+  
+  TEMP_SAVE .BLKW 3 ; LOCATION FOR TEMPORARLY SAVING VALUES
+  TIE_SAVE .BLKW 3 ; PLACE FOR STORING THE VALUES OF EACH ROW SO WE CAN TEST IF THEY ARE ALL FILLED
+   
+
+  PLACE_CHAR_PLAYER1 ; SUBROUTINE FOR PLACING X OR O IN THE APPROPRIATE POSITION
+    LD R1, OFFSET
+    NOT R1, R1
+    ADD R1, R1, #1
+    ADD R3, R0, R1 ; SAVE OFFSET
+    ADD R3, R3, #-1 
+    LEA R2, BOARD ; POINTER TO FIRST LOCATION OF BOARD
+    ADD R2, R2, R3
+    LD R0, PLAYER1
+    STR R0, R2, #0
+
+    AND R1, R1, #0
+    AND R2, R2, #0
+    AND R3, R3, #0
+  RET
+
+  PLACE_CHAR_PLAYER2 ; SUBROUTINE FOR PLACING X OR O IN THE APPROPRIATE POSITION
+    LD R1, OFFSET
+    NOT R1, R1
+    ADD R1, R1, #1
+    ADD R3, R0, R1 ; SAVE OFFSET
+    ADD R3, R3, #-1 
+    LEA R2, BOARD ; POINTER TO FIRST LOCATION OF BOARD
+    ADD R2, R2, R3
+    LD R0, PLAYER2
+    STR R0, R2, #0
+
+    AND R1, R1, #0
+    AND R2, R2, #0
+    AND R3, R3, #0
+  RET	
+
+  DRAW_BOARD
+    ST R7, TEMP_SAVE
+    LD R0, NEW_LINE
+    PUTC
+    LEA R1, BOARD ; POINTER TO FIRST ELEMENT OF THE ARRAY BOARD    
+    LEA R4, TEMP_SAVE
+    ADD R2, R2, #1
+    LOOP2
+      LDR R0, R1, #0
+      PUTC
+      LD R0, SPACE ; PRINT SPACE AFTER EACH CHARACTER
+      PUTC    
+      STR R2, R4, #1
+      JSR IS_DIV_BY_THREE ; CHECK IF WE PRINTED THREE ELEMENTS, IF WE DID GO TO A NEW LINE, ELSE DO NOTHING
+      LDR R2, R4, #1
+      ADD R1, R1, #1
+      ADD R2, R2, #1
+      AND R5, R5, #1 ; THE CHECK WE SPOKE OF ABOVE
+      BRz NO_NEW_LINE
+      LD R0, NEW_LINE
+      PUTC
+      NO_NEW_LINE
+      AND R3, R3, #0
+      ADD R3, R3, R2
+      ADD R3, R3, #-10
+    BRn LOOP2
+    LD R7, TEMP_SAVE
+    AND R1, R1, #0 ; RESET ALL USED REGISTERS TO ZERO
+    AND R2, R2, #0
+    AND R4, R4, #0
+    AND R5, R5, #0
+  RET
+  
+  IS_DIV_BY_THREE
+    AND R5, R5, #0
+    LOOP3
+      ADD R2, R2, #-3
+      BRz YES_DIV_THREE    
+      BRn NO_DIV_THREE
+    BRp LOOP3
+    YES_DIV_THREE
+      ADD R5, R5, #1
+    NO_DIV_THREE
+  RET
+
+
+  CHECK_IF_FINISHED ; R5 = 0 -> GAME STILL NOT FINISHED R5 = 1 -> PLAYER 1 WON, R5 = 2 -> PLAYER 2 WON, R5 = 3 -> DRAW
+    ST R7, TEMP_SAVE
+    AND R5, R5, #0
+    LEA R0, TEMP_SAVE
+    LEA R1, TIE_SAVE
+    JSR CHECK_ROW_1
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2
+      STR R5, R1, #0  
+    JSR CHECK_ROW_2
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2
+      STR R5, R1, #1  
+    JSR CHECK_ROW_3
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2
+      STR R5, R1, #2  
+    JSR CHECK_COL_1
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2
+    JSR CHECK_COL_2
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2 
+    JSR CHECK_COL_3
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2  
+    JSR CHECK_DIA_1
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2  
+    JSR CHECK_DIA_2
+      STR R5, R0, #2
+      ADD R5, R5, #-1
+      BRz PLAYER1_WON
+      LDR R5, R0, #2
+      ADD R5, R5, #-2
+      BRz PLAYER2_WON
+      LDR R5, R0, #2
+    LEA R1, TIE_SAVE
+    LDR R3, R1, #0
+    LDR R4, R1, #1
+    LDR R5, R1, #2
+    
+    ADD R3, R3, #-3
+    BRnp CONTINUE_GAME
+    ADD R4, R4, #-3
+    BRnp CONTINUE_GAME
+    ADD R5, R5, #-3
+    BRnp CONTINUE_GAME
+    BRz DRAW_GAME
+    PLAYER2_WON
+      LDR R5, R0, #2
+      LD R7, TEMP_SAVE
+      RET   
+    PLAYER1_WON
+      LD R7, TEMP_SAVE
+      LDR R5, R0, #2
+      RET
+    DRAW_GAME
+      AND R5, R5, #0
+      ADD R5, R5, #3 
+      LD R7, TEMP_SAVE
+      RET
+    CONTINUE_GAME
+      AND R5, R5, #0
+      LD R7, TEMP_SAVE
+  RET
+  
+  OFFSET2 .FILL #48 
+  PLAYER1_1 .FILL #88 ; SYMBOL FOR X
+  
+  BOARD_ADDRESS1 .BLKW 1
+ 
+  CHECK_ROW_1
+    AND R5, R5, #0	
+    LDR R2, R6, #0
+    ST R6, BOARD_ADDRESS1
+    LD R3, OFFSET2
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW1
+    LDR R2, R6, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW1
+    LDR R2, R6, #2
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW1
+    LDR R2, R6, #0
+    LDR R3, R6, #1
+    LDR R4, R6, #2
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_ROW_1
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_ROW_1
+    
+    LD R3, PLAYER1_1
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_ROW1
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    PLAYER1_WON_ROW1
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    NOT_EQUAL_ROW_1
+    ADD R5, R5, #3
+    NOT_FILLED_ROW1 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+
+  CHECK_ROW_2
+    AND R5, R5, #0	
+    ST R6, BOARD_ADDRESS1
+    LDR R2, R6, #3
+
+    LD R3, OFFSET2
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW2
+    LDR R2, R6, #4
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW2
+    LDR R2, R6, #5
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW2
+    LDR R2, R6, #3
+    LDR R3, R6, #4
+    LDR R4, R6, #5
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_ROW_2
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_ROW_2
+    
+    LD R3, PLAYER1_1
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_ROW2
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    PLAYER1_WON_ROW2
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    NOT_EQUAL_ROW_2
+    ADD R5, R5, #3
+    NOT_FILLED_ROW2 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+
+  CHECK_ROW_3
+    AND R5, R5, #0	
+    ST R6, BOARD_ADDRESS1
+    LDR R2, R6, #6
+
+    LD R3, OFFSET2
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW3
+    LDR R2, R6, #7
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW3
+    LDR R2, R6, #8
+    ADD R2, R2, R3
+    BRn NOT_FILLED_ROW3
+    LDR R2, R6, #6
+    LDR R3, R6, #7
+    LDR R4, R6, #8
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_ROW_3
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_ROW_3
+    
+    LD R3, PLAYER1_1
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_ROW3
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    PLAYER1_WON_ROW3
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    NOT_EQUAL_ROW_3
+    ADD R5, R5, #3
+    NOT_FILLED_ROW3 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+
+  CHECK_COL_1
+    AND R5, R5, #0	
+    ST R6, BOARD_ADDRESS1
+    LDR R2, R6, #0
+
+    LD R3, OFFSET2
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL1
+    LDR R2, R6, #3
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL1
+    LDR R2, R6, #6
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL1
+    LDR R2, R6, #0
+    LDR R3, R6, #3
+    LDR R4, R6, #6
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_COL_1
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_COL_1
+    
+    LD R3, PLAYER1_1
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_COL1
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    PLAYER1_WON_COL1
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    NOT_EQUAL_COL_1
+    ADD R5, R5, #3
+    NOT_FILLED_COL1 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+
+  CHECK_COL_2
+    AND R5, R5, #0	
+    ST R6, BOARD_ADDRESS1
+    LDR R2, R6, #1
+
+    LD R3, OFFSET2
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL2
+    LDR R2, R6, #4
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL2
+    LDR R2, R6, #7
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL2
+    LDR R2, R6, #1
+    LDR R3, R6, #4
+    LDR R4, R6, #7
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_COL_2
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_COL_2
+    
+    LD R3, PLAYER1_1
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_COL2
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    PLAYER1_WON_COL2
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+    NOT_EQUAL_COL_2
+    ADD R5, R5, #3
+    NOT_FILLED_COL2 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS1
+    RET
+
+  PLAYER1_2 .FILL #88
+  BOARD_ADDRESS2 .BLKW 1
+  CHECK_COL_3
+    AND R5, R5, #0	
+    ST R6, BOARD_ADDRESS2
+    LDR R2, R6, #2
+
+    LD R3, OFFSET2
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL3
+    LDR R2, R6, #5
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL3
+    LDR R2, R6, #8
+    ADD R2, R2, R3
+    BRn NOT_FILLED_COL3
+    LDR R2, R6, #2
+    LDR R3, R6, #5
+    LDR R4, R6, #8
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_COL_3
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_COL_3
+    
+    LD R3, PLAYER1_2
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_COL3
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+    PLAYER1_WON_COL3
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+    NOT_EQUAL_COL_3
+    ADD R5, R5, #3
+    NOT_FILLED_COL3 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET  
+  
+  OFFSET3 .FILL #48
+  
+  CHECK_DIA_1
+    AND R5, R5, #0	
+    ST R6, BOARD_ADDRESS2
+    LDR R2, R6, #0
+
+    LD R3, OFFSET3
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_DIA1
+    LDR R2, R6, #4
+    ADD R2, R2, R3
+    BRn NOT_FILLED_DIA1
+    LDR R2, R6, #8
+    ADD R2, R2, R3
+    BRn NOT_FILLED_DIA1
+    LDR R2, R6, #0
+    LDR R3, R6, #4
+    LDR R4, R6, #8
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_DIA_1
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_DIA_1
+    
+    LD R3, PLAYER1_2
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_DIA1
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+    PLAYER1_WON_DIA1
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+    NOT_EQUAL_DIA_1
+    ADD R5, R5, #3
+    NOT_FILLED_DIA1 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+  
+  CHECK_DIA_2
+    AND R5, R5, #0	
+    ST R6, BOARD_ADDRESS2
+    LDR R2, R6, #2
+
+    LD R3, OFFSET3
+    ADD R3, R3, #10
+    NOT R3, R3
+    ADD R3, R3, #1
+    ADD R2, R2, R3
+    BRn NOT_FILLED_DIA2
+    LDR R2, R6, #4
+    ADD R2, R2, R3
+    BRn NOT_FILLED_DIA2
+    LDR R2, R6, #6
+    ADD R2, R2, R3
+    BRn NOT_FILLED_DIA2
+    LDR R2, R6, #2
+    LDR R3, R6, #4
+    LDR R4, R6, #6
+    AND R6, R6, #0
+    ADD R6, R6, R2 ; STORE THE CHECKING SYMBOL EXAMPLE: X OR O
+    
+    NOT R2, R2
+    ADD R2, R2, #1
+    
+    ADD R3, R3, R2
+    BRnp NOT_EQUAL_DIA_2
+    ADD R4, R4, R2
+    BRnp NOT_EQUAL_DIA_2
+    
+    LD R3, PLAYER1_2
+    ADD R3, R3, R2
+    BRz PLAYER1_WON_DIA2
+    ADD R5, R5, #2
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+    PLAYER1_WON_DIA2
+    ADD R5, R5, #1
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+    NOT_EQUAL_DIA_2
+    ADD R5, R5, #3
+    NOT_FILLED_DIA2 
+    AND R2, R2, #0
+    AND R3, R3, #0
+    AND R4, R4, #0
+    LD R6, BOARD_ADDRESS2
+    RET
+
+
+   
+
+.END
